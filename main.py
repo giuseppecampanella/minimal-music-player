@@ -36,7 +36,20 @@ class Player:
         self.len_list_music = len(self.list_music)
         self.slider_volume = slider_volume
         self.slider_volume.bind("<B1-Motion>", lambda event : self.drag_slider_volume(event))
+        self.slider_volume.bind("<Button-1>", lambda event : self.press_slider_volume(event))
         self.slider_volume.set(30)
+
+    def press_slider_volume(self, event):
+        position = event.x
+        if(position < MIN_VOLUME):
+            position = MIN_VOLUME
+        elif(position > MAX_VOLUME):
+            position = MAX_VOLUME
+
+        self.slider_volume.set(position)
+        # se ho una traccia caricata cambio il volume
+        if self.music:
+            self.music.audio_set_volume(position)
 
     def drag_slider_volume(self, event):
         position = event.x
