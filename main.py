@@ -1,6 +1,6 @@
 
 import os
-from tkinter import *
+import tkinter as tk
 from time import sleep
 import vlc
 import datetime
@@ -127,30 +127,30 @@ class Player:
         return self.time_song.minute*60 + self.time_song.second
 
 def main():
-    root = Tk()
-    play_button = Button(root, text="PLAY")
+    root = tk.Tk()
+    play_button = tk.Button(root, text="PLAY")
     play_button.grid(row=0, column=0)
 
-    pause_button = Button(root, text="PAUSE")
+    pause_button = tk.Button(root, text="PAUSE")
     pause_button.grid(row=0, column=1)
 
-    stop_button = Button(root, text="STOP", state="disabled")
+    stop_button = tk.Button(root, text="STOP", state="disabled")
     stop_button.grid(row=0, column=2)
 
     list_music = os.listdir(DIR_MUSIC)
-    list_box = Listbox(root, highlightcolor="blue", selectmode="SINGLE")
+    list_box = tk.Listbox(root, highlightcolor="blue", selectmode="SINGLE")
     list_box.grid(row=1, column=0)
     id = 1
     for song in list_music:
         list_box.insert(id, song)
         id += 1
 
-    slider_song = Scale(root, from_=0, to=0, orient=HORIZONTAL, length=400, showvalue=False)
+    slider_song = tk.Scale(root, from_=0, to=0, orient=tk.HORIZONTAL, length=400, showvalue=False)
     slider_song.grid(row=id, column=0)
 
-    lab_len_song = Label(root, text="00:00")
+    lab_len_song = tk.Label(root, text="00:00")
     lab_len_song.grid(row=id, column=2)
-    lab_curr_time = Label(root, text="00:00")
+    lab_curr_time = tk.Label(root, text="00:00")
     lab_curr_time.grid(row=id, column=1)
 
     player = Player(play_button, pause_button, stop_button, list_box,
