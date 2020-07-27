@@ -6,32 +6,31 @@ import vlc
 import datetime
 
 DIR_MUSIC = "./music"
-PLAYING = 1
-STOPPED = 0
 
 class Player:
-    def __init__(self, play, pause, stop, list_music, lab_len_song, lab_curr_time, slider_song):
+    def __init__(self, play, list_box, list_music, lab_len_song, lab_curr_time,
+                slider_song, lab_name_song):
         self.play = play
-        self.play.bind("<Button-1>", lambda event: self.play_music_event(event))
-        self.pause = pause
-        self.pause.bind("<Button-1>", lambda event: self.pause_music_event(event))
-        self.stop = stop
-        self.stop.bind("<Button-1>", lambda event: self.stop_music_event(event))
+        self.play.bind("<Button-1>", lambda event: self.play_pause_music_event(event))
         self.music = None
+        self.list_box = list_box
         self.list_music = list_music
         # abilito il doppio click
-        self.list_music.bind("<Double-Button-1>", lambda event : self.double_click_event(event))
+        self.list_box.bind("<Double-Button-1>", lambda event : self.double_click_event(event))
         self.length_song = datetime.datetime.now()
         self.time_song = None
         self.lab_len_song = lab_len_song
         self.lab_curr_time = lab_curr_time
-        self.new_song = True
+        self.new_song = False
         self.slider_song = slider_song
         # callback per quando muovo lo slider della canzone
         self.slider_song.configure(command=self.slider_moving)
         self.slider_song.bind("<ButtonRelease-1>", lambda event : self.release_slider_song(event))
         self.slider_song.bind("<Button-1>", lambda event : self.press_slider_song(event))
         self.slider_song_is_pressed = False
+        self.position_list = 0
+        self.lab_name_song = lab_name_song
+        self.len_list_music = len(self.list_music)
 
     def slider_moving(self, event):
         position = self.slider_song.get()
@@ -44,32 +43,45 @@ class Player:
         time = self.length_song.replace(minute=minutes, second=seconds)
         return datetime.datetime.strftime(time, "%M:%S")
 
-    def play_music_event(self, event):
-        self.play_song(song=self.list_music.get("active"))
+    def play_pause_music_event(self, event):
+        # se non ho ancora una traccia caricata, carico la prima dell'elenco
+        if(not self.music):
+            if(self.len_list_music > 0):
+                self.play_song(song=self.list_music[0])
+            else:
+                print("Non c'è nessuna canzone nell'elenco")
+        else:
+            if(self.music.get_state() == vlc.State.Playing):
+                self.play.configure(text="PLAY")
+                self.music.pause()
+            elif(self.music.get_state() == vlc.State.Paused):
+                self.play.configure(text="PAUSE")
+                self.music.play()
+            elif(self.music.get_state() == vlc.State.Ended):
+                self.play_song(song=self.list_box.get("active"))
 
     def stop_music(self):
-        if(self.music and self.music.is_playing()):
+        if(self.music and self.music.get_state() == vlc.State.Playing):
             self.music.stop()
-            self.stop.configure(state="disabled")
-
-    def stop_music_event(self, event):
-        self.stop_music()
-
-    def is_playing(self):
-        return self.music.is_playing() == PLAYING
 
     def double_click_event(self, event):
-        self.play_song(self.list_music.get("active"))
+        song = self.list_box.get("active")
+        self.play_song(song)
 
     def play_song(self, song):
+        self.play.configure(text="PAUSE")
+        self.lab_name_song.configure(text=song)
+        index = self.position_list = self.list_music.index(song)
+        self.list_box.select_set(index)
+        self.list_box.activate(index)
         self.new_song = True
         # nell'eventualità che stia suonando qualcosa la stoppo
         self.stop_music()
         self.music = vlc.MediaPlayer(DIR_MUSIC + "/" + song)
         self.music.play()
-        self.stop.configure(state="active")
         self.vlc_event_manager = self.music.event_manager()
         self.vlc_event_manager.event_attach(vlc.EventType.MediaPlayerTimeChanged, lambda event : self.time_changed(event))
+        self.vlc_event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda event : self.end_reached_song(event))
         self.time_song = datetime.datetime.now().replace(minute=0, second=0)
 
     def time_changed(self, event):
@@ -81,13 +93,23 @@ class Player:
             seconds = self.get_time_song_seconds()
             self.slider_song.set(seconds)
 
-    def pause_music_event(self, event):
-        if(self.is_playing()):
-            self.pause.configure(text="RESUME")
-            self.music.pause()
+    def end_reached_song(self, event):
+        self.position_list += 1
+        # sono arrivato alla fine dell'elenco delle canzoni
+        if(self.position_list == self.len_list_music):
+            self.lab_name_song.configure(text="----")
+            self.lab_len_song.configure(text="--:--")
+            self.lab_curr_time.configure(text="--:--")
+            self.list_box.selection_clear(0, tk.END)
+            self.list_box.select_set(0)
+            self.list_box.activate(0)
+            self.play.configure(text="PLAY")
         else:
-            self.pause.configure(text="PAUSE")
-            self.music.play()
+            index = self.position_list
+            self.list_box.selection_clear(0, tk.END)
+            self.list_box.selection_set(index)
+            song = self.list_music[index]
+            self.play_song(song)
 
     def get_time_song(self):
         millis = self.music.get_time()
@@ -128,33 +150,45 @@ class Player:
 
 def main():
     root = tk.Tk()
-    play_button = tk.Button(root, text="PLAY")
-    play_button.grid(row=0, column=0)
+    root.resizable(0,0)
 
-    pause_button = tk.Button(root, text="PAUSE")
-    pause_button.grid(row=0, column=1)
+    listbox_frame = tk.Frame(root)
+    listbox_frame.pack(fill="x")
 
-    stop_button = tk.Button(root, text="STOP", state="disabled")
-    stop_button.grid(row=0, column=2)
+    name_song_frame = tk.Frame(root)
+    name_song_frame.pack()
+
+    slider_frame = tk.Frame(root)
+    slider_frame.pack()
+
+    buttons_frame = tk.Frame(root)
+    buttons_frame.pack()
+
+    lab_name_song = tk.Label(name_song_frame, text="----")
+    lab_name_song.pack(side="bottom")
+
+    play_button = tk.Button(buttons_frame, text="PLAY")
+    play_button.pack(side="left")
 
     list_music = os.listdir(DIR_MUSIC)
-    list_box = tk.Listbox(root, highlightcolor="blue", selectmode="SINGLE")
-    list_box.grid(row=1, column=0)
+
+    list_box = tk.Listbox(listbox_frame, selectbackground="sky blue", selectmode="SINGLE")
+    list_box.pack(side="top", fill=tk.BOTH, expand=1)
     id = 1
     for song in list_music:
         list_box.insert(id, song)
         id += 1
 
-    slider_song = tk.Scale(root, from_=0, to=0, orient=tk.HORIZONTAL, length=400, showvalue=False)
-    slider_song.grid(row=id, column=0)
+    slider_song = tk.Scale(slider_frame, from_=0, to=0, orient=tk.HORIZONTAL, length=400, showvalue=False)
+    slider_song.pack(side="left")
 
-    lab_len_song = tk.Label(root, text="00:00")
-    lab_len_song.grid(row=id, column=2)
-    lab_curr_time = tk.Label(root, text="00:00")
-    lab_curr_time.grid(row=id, column=1)
+    lab_curr_time = tk.Label(slider_frame, text="--:--")
+    lab_curr_time.pack(side="left")
+    lab_len_song = tk.Label(slider_frame, text="--:--")
+    lab_len_song.pack(side="left")
 
-    player = Player(play_button, pause_button, stop_button, list_box,
-            lab_len_song, lab_curr_time, slider_song)
+    player = Player(play_button, list_box, list_music, lab_len_song,
+                    lab_curr_time, slider_song, lab_name_song)
 
     root.mainloop()
 
