@@ -6,6 +6,7 @@ import vlc
 import datetime
 
 DIR_MUSIC = "./music"
+DIR_ICONS = "./icons"
 
 class Player:
     def __init__(self, play, list_box, list_music, lab_len_song, lab_curr_time,
@@ -52,10 +53,10 @@ class Player:
                 print("Non c'è nessuna canzone nell'elenco")
         else:
             if(self.music.get_state() == vlc.State.Playing):
-                self.play.configure(text="PLAY")
+                self.play.configure(text="PLAY", image=self.play.play_icon)
                 self.music.pause()
             elif(self.music.get_state() == vlc.State.Paused):
-                self.play.configure(text="PAUSE")
+                self.play.configure(text="PAUSE", image=self.play.pause_icon)
                 self.music.play()
             elif(self.music.get_state() == vlc.State.Ended):
                 self.play_song(song=self.list_box.get("active"))
@@ -69,7 +70,7 @@ class Player:
         self.play_song(song)
 
     def play_song(self, song):
-        self.play.configure(text="PAUSE")
+        self.play.configure(text="PAUSE", image=self.play.pause_icon)
         self.lab_name_song.configure(text=song)
         index = self.position_list = self.list_music.index(song)
         self.list_box.select_set(index)
@@ -103,7 +104,7 @@ class Player:
             self.list_box.selection_clear(0, tk.END)
             self.list_box.select_set(0)
             self.list_box.activate(0)
-            self.play.configure(text="PLAY")
+            self.play.configure(text="PLAY", image=self.play.play_icon)
         else:
             index = self.position_list
             self.list_box.selection_clear(0, tk.END)
@@ -167,7 +168,11 @@ def main():
     lab_name_song = tk.Label(name_song_frame, text="----")
     lab_name_song.pack(side="bottom")
 
-    play_button = tk.Button(buttons_frame, text="PLAY")
+    play_icon = tk.PhotoImage(file=DIR_ICONS + "/" + "play.png")
+    play_button = tk.Button(buttons_frame, text="PLAY", image=play_icon)
+    # evito il garbage collector associandolo al campo del Button
+    play_button.play_icon = play_icon
+    play_button.pause_icon = tk.PhotoImage(file=DIR_ICONS + "/" + "pause.png")
     play_button.pack(side="left")
 
     list_music = os.listdir(DIR_MUSIC)
