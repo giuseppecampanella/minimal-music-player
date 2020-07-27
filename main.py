@@ -44,7 +44,9 @@ class Player:
             position = MIN_VOLUME
         elif(position > MAX_VOLUME):
             position = MAX_VOLUME
-        self.music.audio_set_volume(position)
+        # se ho una traccia caricata cambio il volume
+        if self.music:
+            self.music.audio_set_volume(position)
 
     def slider_moving(self, event):
         position = self.slider_song.get()
@@ -165,6 +167,7 @@ class Player:
 
 def main():
     root = tk.Tk()
+    root.title("minimal music player")
     root.resizable(0,0)
 
     listbox_frame = tk.Frame(root)
