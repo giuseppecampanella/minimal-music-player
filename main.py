@@ -7,10 +7,12 @@ import datetime
 
 DIR_MUSIC = "./music"
 DIR_ICONS = "./icons"
+MIN_VOLUME = 0
+MAX_VOLUME = 100
 
 class Player:
     def __init__(self, play, list_box, list_music, lab_len_song, lab_curr_time,
-                slider_song, lab_name_song):
+                slider_song, lab_name_song, slider_volume):
         self.play = play
         self.play.bind("<Button-1>", lambda event: self.play_pause_music_event(event))
         self.music = None
@@ -32,6 +34,17 @@ class Player:
         self.position_list = 0
         self.lab_name_song = lab_name_song
         self.len_list_music = len(self.list_music)
+        self.slider_volume = slider_volume
+        self.slider_volume.bind("<B1-Motion>", lambda event : self.drag_slider_volume(event))
+        self.slider_volume.set(30)
+
+    def drag_slider_volume(self, event):
+        position = event.x
+        if(position < MIN_VOLUME):
+            position = MIN_VOLUME
+        elif(position > MAX_VOLUME):
+            position = MAX_VOLUME
+        self.music.audio_set_volume(position)
 
     def slider_moving(self, event):
         position = self.slider_song.get()
@@ -79,6 +92,7 @@ class Player:
         # nell'eventualità che stia suonando qualcosa la stoppo
         self.stop_music()
         self.music = vlc.MediaPlayer(DIR_MUSIC + "/" + song)
+        self.music.audio_set_volume(self.slider_volume.get())
         self.music.play()
         self.vlc_event_manager = self.music.event_manager()
         self.vlc_event_manager.event_attach(vlc.EventType.MediaPlayerTimeChanged, lambda event : self.time_changed(event))
@@ -163,7 +177,10 @@ def main():
     slider_frame.pack()
 
     buttons_frame = tk.Frame(root)
-    buttons_frame.pack()
+    buttons_frame.pack(fill="x")
+
+    volume_frame = tk.Frame(buttons_frame)
+    volume_frame.pack(side="right")
 
     lab_name_song = tk.Label(name_song_frame, text="----")
     lab_name_song.pack(side="bottom")
@@ -174,6 +191,9 @@ def main():
     play_button.play_icon = play_icon
     play_button.pause_icon = tk.PhotoImage(file=DIR_ICONS + "/" + "pause.png")
     play_button.pack(side="left")
+
+    slider_volume = tk.Scale(volume_frame, from_=0, to=100, orient=tk.HORIZONTAL, length=100)
+    slider_volume.pack(side="right")
 
     list_music = os.listdir(DIR_MUSIC)
 
@@ -193,7 +213,7 @@ def main():
     lab_len_song.pack(side="left")
 
     player = Player(play_button, list_box, list_music, lab_len_song,
-                    lab_curr_time, slider_song, lab_name_song)
+                    lab_curr_time, slider_song, lab_name_song, slider_volume)
 
     root.mainloop()
 
