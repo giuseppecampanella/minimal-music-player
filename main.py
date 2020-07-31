@@ -37,10 +37,10 @@ class Utility:
         # root.attributes('-topmost', 'true')
         root.title("Settings")
 
-        dir_frame = tk.Frame(root)
+        dir_frame = tk.LabelFrame(root, text="Path", padx=5, pady=5)
         dir_frame.pack()
 
-        lab_directory = tk.Label(dir_frame, text="directory")
+        lab_directory = tk.Label(dir_frame, text="Directory")
         lab_directory.pack(side="left")
 
         entry_dir = tk.Entry(dir_frame, relief=tk.RAISED)
@@ -50,12 +50,12 @@ class Utility:
 
         self.entry = entry_dir
 
-        button_explore = tk.Button(dir_frame, text="Explore...")
+        button_explore = tk.Button(dir_frame, text="Explore...", padx=5)
         button_explore.pack(side="left")
 
         button_explore.bind("<Button-1>", lambda event : self.choose_directory_event(event))
 
-        button_save = tk.Button(dir_frame, text = "Save")
+        button_save = tk.Button(dir_frame, text = "Save", padx=5)
         button_save.pack(side="left")
 
         button_save.bind("<Button-1>", lambda event : self.save_modifications_and_close(root, player, event))
@@ -368,12 +368,21 @@ def main():
     else:
         list_music = os.listdir(dir_music)
 
-    list_box = tk.Listbox(listbox_frame, selectbackground="sky blue", selectmode="SINGLE")
+    yscrollbar = tk.Scrollbar(listbox_frame)
+    yscrollbar.pack(side="right", fill=tk.Y)
+
+    xscrollbar = tk.Scrollbar(listbox_frame, orient=tk.HORIZONTAL)
+    xscrollbar.pack(side="bottom", fill=tk.X)
+
+    list_box = tk.Listbox(listbox_frame, xscrollcommand=xscrollbar.set, yscrollcommand=yscrollbar.set, selectbackground="sky blue", selectmode="SINGLE")
     list_box.pack(side="top", fill=tk.BOTH, expand=1)
     id = 1
     for song in list_music:
         list_box.insert(id, song)
         id += 1
+
+    yscrollbar.config(command=list_box.yview)
+    xscrollbar.config(command=list_box.xview)
 
     utility.add_listbox_widget(list_box)
 
