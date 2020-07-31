@@ -1,6 +1,6 @@
 #-------------------------------------------
 # music player based on tkinter library
-# 2020, Giuseppe Campanella
+# 2020, by Giuseppe Campanella with <3
 #-------------------------------------------
 
 import os
@@ -25,7 +25,7 @@ class Utility:
         self.listbox = listbox
 
     def show_settings_frame(self, player):
-        # Se è gia visibile la schermata Settings non ne creo un'altra
+        # don't duplicate Settings windows
         if(self.isshown == True):
             return
         else:
@@ -33,7 +33,7 @@ class Utility:
 
         folder_selected = self.dir_music
         root = tk.Toplevel()
-        # non faccio nascondere questa finestra
+        # let the Toplevel be always on top and never hide
         # root.attributes('-topmost', 'true')
         root.title("Settings")
 
@@ -73,7 +73,7 @@ class Utility:
             self.dir_music = folder
             self.write_settings_json_to_file()
             self.get_list_music_from_dir()
-            # cambio la lista della musica all'iterno di player
+            # change the listmusic inside Player
             player.change_list_music()
             root.destroy()
         else:
@@ -81,16 +81,16 @@ class Utility:
 
     def choose_directory_event(self, event):
         folder_selected = filedialog.askdirectory()
-        # se non scelgo nulla rimango con la scelta precedente
+        # do not update the entry widget of directory if is not picked from the file manager
         if(len(folder_selected) > 0):
             self.entry.delete(0, tk.END)
             self.entry.insert(0, folder_selected)
 
-    # cambio la lista della musica
+    # change the listbox widget
     def get_list_music_from_dir(self):
         self.list_music = os.listdir(self.dir_music)
 
-        # cancello i vecchi elementi e aggiungo i nuovi
+        # delete old songs and add newer
         self.listbox.delete(0,tk.END)
         id = 1
         for song in self.list_music:
@@ -114,7 +114,7 @@ class Player:
         self.music = None
         self.list_box = list_box
         self.list_music = list_music
-        # abilito il doppio click
+        # this enable double click event
         self.list_box.bind("<Double-Button-1>", lambda event : self.double_click_event(event))
         self.length_song = datetime.datetime.now()
         self.time_song = None
@@ -122,7 +122,7 @@ class Player:
         self.lab_curr_time = lab_curr_time
         self.new_song = False
         self.slider_song = slider_song
-        # callback per quando muovo lo slider della canzone
+        # enable the callback when I move the slider of the song
         self.slider_song.configure(command=self.slider_moving)
         self.slider_song.bind("<ButtonRelease-1>", lambda event : self.release_slider_song(event))
         self.slider_song.bind("<Button-1>", lambda event : self.press_slider_song(event))
@@ -170,7 +170,7 @@ class Player:
             position = MAX_VOLUME
 
         self.slider_volume.set(position)
-        # se ho una traccia caricata cambio il volume
+        # change volume if the song is loaded
         if self.music:
             self.music.audio_set_volume(position)
 
@@ -180,7 +180,7 @@ class Player:
             position = MIN_VOLUME
         elif(position > MAX_VOLUME):
             position = MAX_VOLUME
-        # se ho una traccia caricata cambio il volume
+        # change volume if the song is loaded
         if self.music:
             self.music.audio_set_volume(position)
 
@@ -196,7 +196,7 @@ class Player:
         return datetime.datetime.strftime(time, "%M:%S")
 
     def play_pause_music_event(self, event):
-        # se non ho ancora una traccia caricata, carico la prima dell'elenco
+        # load the first song if is not loaded anything
         if(not self.music):
             if(self.len_list_music > 0):
                 self.play_song(song=self.list_music[0])
@@ -227,7 +227,7 @@ class Player:
         self.list_box.select_set(index)
         self.list_box.activate(index)
         self.new_song = True
-        # nell'eventualità che stia suonando qualcosa la stoppo
+        # stop old song
         self.stop_music()
         self.music = vlc.MediaPlayer(self.utility.dir_music + "/" + song)
         self.music.audio_set_volume(self.slider_volume.get())
@@ -240,7 +240,7 @@ class Player:
     def time_changed(self, event):
         self.lab_len_song.configure(text=self.get_length_song())
         self.slider_song.configure(to=self.get_length_song_seconds())
-        # se sto premendo non aggiorno il valore
+        # update the cursor of the slider only if is not touched
         if(not self.slider_song_is_pressed):
             self.lab_curr_time.configure(text=self.get_time_song())
             seconds = self.get_time_song_seconds()
@@ -248,7 +248,7 @@ class Player:
 
     def end_reached_song(self, event):
         self.position_list += 1
-        # sono arrivato alla fine dell'elenco delle canzoni
+        # this is the end of the list of the songs
         if(self.position_list == self.len_list_music):
             self.lab_name_song.configure(text="----")
             self.lab_len_song.configure(text="--:--")
@@ -288,9 +288,10 @@ class Player:
             self.music.set_position(position)
 
     def press_slider_song(self, event):
-        # divido la posizione rispetto all'intera grandezza dello slider per la
-        # lunghezza effettiva dello slider e moltiplico per la lunghezza effettiva
-        # in secondi della canzone per ottenere la posizione
+        # the slider needs a position in seconds so:
+        # to obtain the position of the cursor, divide the position x touched on
+        # the entire length of the slider and then multiply it by the length of
+        # the song in seconds
         position = (event.x / self.slider_song.cget("length"))*(self.get_length_song_seconds())
         self.slider_song.set(position)
         self.slider_song_is_pressed = True
@@ -343,7 +344,7 @@ def main():
 
     play_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "play.png")
     play_button = tk.Button(buttons_frame, text="PLAY", image=play_icon)
-    # evito il garbage collector associandolo al campo del Button
+    # save the reference of the icon as a field inside the Button to not be garbage collected
     play_button.play_icon = play_icon
     play_button.pause_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "pause.png")
     play_button.pack(side="left")
@@ -362,7 +363,7 @@ def main():
     slider_volume.pack(side="right")
 
     list_music = []
-    # controllo che il path esista
+    # check if the path exists
     if(not os.path.exists(dir_music)):
         messagebox.showinfo("Info", f"This directory `{dir_music}` does not exist. Click the settings button and chose a valid path.")
     else:
