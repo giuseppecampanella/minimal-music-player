@@ -106,7 +106,8 @@ class Utility:
 
 class Player:
     def __init__(self, utility, play, list_box, list_music, lab_len_song,
-                lab_curr_time, slider_song, lab_name_song, slider_volume):
+                lab_curr_time, slider_song, lab_name_song, slider_volume,
+                next_button, previous_button):
         self.utility = utility
         self.play = play
         self.play.bind("<Button-1>", lambda event: self.play_pause_music_event(event))
@@ -133,9 +134,33 @@ class Player:
         self.slider_volume.bind("<B1-Motion>", lambda event : self.drag_slider_volume(event))
         self.slider_volume.bind("<Button-1>", lambda event : self.press_slider_volume(event))
         self.slider_volume.set(30)
+        self.next_button = next_button
+        self.next_button.bind("<Button-1>", lambda event: self.change_song_event(event, next=True))
+        self.previous_button = previous_button
+        self.previous_button.bind("<Button-1>", lambda event: self.change_song_event(event, previous=True))
+
+    def change_song_event(self, event, next=False, previous=False):
+        if next:
+            if(self.position_list < self.len_list_music - 1):
+                self.position_list += 1
+            else:
+                self.position_list = 0
+        else:
+            if(self.position_list > 0):
+                self.position_list -= 1
+            else:
+                self.position_list = self.len_list_music - 1
+
+        index = self.position_list
+        self.list_box.selection_clear(0, tk.END)
+        self.list_box.selection_set(index)
+        song = self.list_music[index]
+        self.play_song(song)
 
     def change_list_music(self):
         self.list_music = self.utility.list_music
+        self.len_list_music = len(self.list_music)
+        self.position_list = 0
 
     def press_slider_volume(self, event):
         position = event.x
@@ -176,7 +201,7 @@ class Player:
             if(self.len_list_music > 0):
                 self.play_song(song=self.list_music[0])
             else:
-                print("Non c'è nessuna canzone nell'elenco")
+                messagebox.showinfo("Info", f"This directory `{self.utility.dir_music}` is empty. Click the settings button and chose a valid path.")
         else:
             if(self.music.get_state() == vlc.State.Playing):
                 self.play.configure(text="PLAY", image=self.play.play_icon)
@@ -323,6 +348,16 @@ def main():
     play_button.pause_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "pause.png")
     play_button.pack(side="left")
 
+    previous_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "previous.png")
+    previous_button = tk.Button(buttons_frame, text="PREVIOUS", image=previous_icon)
+    previous_button.previous_icon = previous_icon
+    previous_button.pack(side="left")
+
+    next_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "next.png")
+    next_button = tk.Button(buttons_frame, text="NEXT", image=next_icon)
+    next_button.next_icon = next_icon
+    next_button.pack(side="left")
+
     slider_volume = tk.Scale(volume_frame, from_=0, to=100, orient=tk.HORIZONTAL, length=100)
     slider_volume.pack(side="right")
 
@@ -351,7 +386,8 @@ def main():
     lab_len_song.pack(side="left")
 
     player = Player(utility, play_button, list_box, list_music, lab_len_song,
-                    lab_curr_time, slider_song, lab_name_song, slider_volume)
+                    lab_curr_time, slider_song, lab_name_song, slider_volume,
+                    next_button, previous_button)
 
     root.iconphoto(False, play_icon)
 
