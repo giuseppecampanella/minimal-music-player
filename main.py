@@ -1,18 +1,113 @@
+#-------------------------------------------
+# music player based on tkinter library
+# 2020, Giuseppe Campanella
+#-------------------------------------------
 
 import os
+import json
+from tkinter import filedialog
+from tkinter import messagebox
 import tkinter as tk
 from time import sleep
 import vlc
 import datetime
 
-DIR_MUSIC = "./music"
-DIR_ICONS = "./icons"
 MIN_VOLUME = 0
 MAX_VOLUME = 100
 
+class Utility:
+    def __init__(self, dir_music, dir_icons):
+        self.dir_music = dir_music
+        self.dir_icons = dir_icons
+        self.isshown = False
+
+    def add_listbox_widget(self, listbox):
+        self.listbox = listbox
+
+    def show_settings_frame(self, player):
+        # Se è gia visibile la schermata Settings non ne creo un'altra
+        if(self.isshown == True):
+            return
+        else:
+            self.isshown = True
+
+        folder_selected = self.dir_music
+        root = tk.Toplevel()
+        # non faccio nascondere questa finestra
+        # root.attributes('-topmost', 'true')
+        root.title("Settings")
+
+        dir_frame = tk.Frame(root)
+        dir_frame.pack()
+
+        lab_directory = tk.Label(dir_frame, text="directory")
+        lab_directory.pack(side="left")
+
+        entry_dir = tk.Entry(dir_frame, relief=tk.RAISED)
+        entry_dir.delete(0, tk.END)
+        entry_dir.insert(0, folder_selected)
+        entry_dir.pack(side="left")
+
+        self.entry = entry_dir
+
+        button_explore = tk.Button(dir_frame, text="Explore...")
+        button_explore.pack(side="left")
+
+        button_explore.bind("<Button-1>", lambda event : self.choose_directory_event(event))
+
+        button_save = tk.Button(dir_frame, text = "Save")
+        button_save.pack(side="left")
+
+        button_save.bind("<Button-1>", lambda event : self.save_modifications_and_close(root, player, event))
+
+        root.protocol("WM_DELETE_WINDOW", lambda : self.close_window(root))
+
+    def close_window(self, root):
+        self.isshown = False
+        root.destroy()
+
+    def save_modifications_and_close(self, root, player, event):
+        folder = self.entry.get()
+        if(os.path.exists(folder)):
+            self.isshown = False
+            self.dir_music = folder
+            self.write_settings_json_to_file()
+            self.get_list_music_from_dir()
+            # cambio la lista della musica all'iterno di player
+            player.change_list_music()
+            root.destroy()
+        else:
+            messagebox.showerror("Error", "This directory does not exist. Click the browse button and chose a valid path.")
+
+    def choose_directory_event(self, event):
+        folder_selected = filedialog.askdirectory()
+        # se non scelgo nulla rimango con la scelta precedente
+        if(len(folder_selected) > 0):
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, folder_selected)
+
+    # cambio la lista della musica
+    def get_list_music_from_dir(self):
+        self.list_music = os.listdir(self.dir_music)
+
+        # cancello i vecchi elementi e aggiungo i nuovi
+        self.listbox.delete(0,tk.END)
+        id = 1
+        for song in self.list_music:
+            self.listbox.insert(id, song)
+            id += 1
+
+    def write_settings_json_to_file(self):
+        dict = {}
+        dict["directory_music"] = self.dir_music
+        dict["directory_icons"] = "./icons"
+        with open('settings.json', 'w') as f:
+            json.dump(dict, f)
+
 class Player:
-    def __init__(self, play, list_box, list_music, lab_len_song, lab_curr_time,
-                slider_song, lab_name_song, slider_volume):
+    def __init__(self, utility, play, list_box, list_music, lab_len_song,
+                lab_curr_time, slider_song, lab_name_song, slider_volume):
+        self.utility = utility
         self.play = play
         self.play.bind("<Button-1>", lambda event: self.play_pause_music_event(event))
         self.music = None
@@ -38,6 +133,9 @@ class Player:
         self.slider_volume.bind("<B1-Motion>", lambda event : self.drag_slider_volume(event))
         self.slider_volume.bind("<Button-1>", lambda event : self.press_slider_volume(event))
         self.slider_volume.set(30)
+
+    def change_list_music(self):
+        self.list_music = self.utility.list_music
 
     def press_slider_volume(self, event):
         position = event.x
@@ -106,7 +204,7 @@ class Player:
         self.new_song = True
         # nell'eventualità che stia suonando qualcosa la stoppo
         self.stop_music()
-        self.music = vlc.MediaPlayer(DIR_MUSIC + "/" + song)
+        self.music = vlc.MediaPlayer(self.utility.dir_music + "/" + song)
         self.music.audio_set_volume(self.slider_volume.get())
         self.music.play()
         self.vlc_event_manager = self.music.event_manager()
@@ -178,7 +276,24 @@ class Player:
     def get_time_song_seconds(self):
         return self.time_song.minute*60 + self.time_song.second
 
+    def change_music_path_from_settings(self, player):
+        self.utility.show_settings_frame(player)
+
+
+def read_settings_json_from_file():
+    dir_music = dir_icons = ""
+    with open("settings.json") as file:
+        data = json.load(file)
+        dir_music = data['directory_music']
+        dir_icons = data['directory_icons']
+    return dir_music, dir_icons
+
 def main():
+
+    dir_music, dir_icons = read_settings_json_from_file()
+
+    utility = Utility(dir_music, dir_icons)
+
     root = tk.Tk()
     root.title("minimal music player")
     root.resizable(0,0)
@@ -201,17 +316,22 @@ def main():
     lab_name_song = tk.Label(name_song_frame, text="----")
     lab_name_song.pack(side="bottom")
 
-    play_icon = tk.PhotoImage(file=DIR_ICONS + "/" + "play.png")
+    play_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "play.png")
     play_button = tk.Button(buttons_frame, text="PLAY", image=play_icon)
     # evito il garbage collector associandolo al campo del Button
     play_button.play_icon = play_icon
-    play_button.pause_icon = tk.PhotoImage(file=DIR_ICONS + "/" + "pause.png")
+    play_button.pause_icon = tk.PhotoImage(file=utility.dir_icons + "/" + "pause.png")
     play_button.pack(side="left")
 
     slider_volume = tk.Scale(volume_frame, from_=0, to=100, orient=tk.HORIZONTAL, length=100)
     slider_volume.pack(side="right")
 
-    list_music = os.listdir(DIR_MUSIC)
+    list_music = []
+    # controllo che il path esista
+    if(not os.path.exists(dir_music)):
+        messagebox.showinfo("Info", f"This directory `{dir_music}` does not exist. Click the settings button and chose a valid path.")
+    else:
+        list_music = os.listdir(dir_music)
 
     list_box = tk.Listbox(listbox_frame, selectbackground="sky blue", selectmode="SINGLE")
     list_box.pack(side="top", fill=tk.BOTH, expand=1)
@@ -219,6 +339,8 @@ def main():
     for song in list_music:
         list_box.insert(id, song)
         id += 1
+
+    utility.add_listbox_widget(list_box)
 
     slider_song = tk.Scale(slider_frame, from_=0, to=0, orient=tk.HORIZONTAL, length=400, showvalue=False)
     slider_song.pack(side="left")
@@ -228,8 +350,15 @@ def main():
     lab_len_song = tk.Label(slider_frame, text="--:--")
     lab_len_song.pack(side="left")
 
-    player = Player(play_button, list_box, list_music, lab_len_song,
+    player = Player(utility, play_button, list_box, list_music, lab_len_song,
                     lab_curr_time, slider_song, lab_name_song, slider_volume)
+
+    root.iconphoto(False, play_icon)
+
+    menubar = tk.Menu(root)
+    menubar.add_command(label="Settings", command=lambda : player.change_music_path_from_settings(player))
+
+    root.config(menu=menubar)
 
     root.mainloop()
 
