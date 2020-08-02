@@ -24,7 +24,7 @@ class Utility:
     def add_listbox_widget(self, listbox):
         self.listbox = listbox
 
-    def show_settings_frame(self, player):
+    def show_settings_frame(self, root, player):
         # don't duplicate Settings windows
         if(self.isshown == True):
             return
@@ -32,12 +32,13 @@ class Utility:
             self.isshown = True
 
         folder_selected = self.dir_music
-        root = tk.Toplevel()
+        window = tk.Toplevel(root)
         # let the Toplevel be always on top and never hide
-        # root.attributes('-topmost', 'true')
-        root.title("Settings")
+        # window.attributes('-topmost', 'true')
+        window.title("Settings")
+        window.group(root)
 
-        dir_frame = tk.LabelFrame(root, text="Path", padx=5, pady=5)
+        dir_frame = tk.LabelFrame(window, text="Path", padx=5, pady=5)
         dir_frame.pack()
 
         lab_directory = tk.Label(dir_frame, text="Directory")
@@ -58,15 +59,15 @@ class Utility:
         button_save = tk.Button(dir_frame, text = "Save", padx=5)
         button_save.pack(side="left")
 
-        button_save.bind("<Button-1>", lambda event : self.save_modifications_and_close(root, player, event))
+        button_save.bind("<Button-1>", lambda event : self.save_modifications_and_close(window, player, event))
 
-        root.protocol("WM_DELETE_WINDOW", lambda : self.close_window(root))
+        window.protocol("WM_DELETE_WINDOW", lambda : self.close_window(window))
 
-    def close_window(self, root):
+    def close_window(self, window):
         self.isshown = False
-        root.destroy()
+        window.destroy()
 
-    def save_modifications_and_close(self, root, player, event):
+    def save_modifications_and_close(self, window, player, event):
         folder = self.entry.get()
         if(os.path.exists(folder)):
             self.isshown = False
@@ -75,7 +76,7 @@ class Utility:
             self.get_list_music_from_dir()
             # change the listmusic inside Player
             player.change_list_music()
-            root.destroy()
+            window.destroy()
         else:
             messagebox.showerror("Error", "This directory does not exist. Click the browse button and chose a valid path.")
 
@@ -133,7 +134,8 @@ class Player:
         self.slider_volume = slider_volume
         self.slider_volume.bind("<B1-Motion>", lambda event : self.drag_slider_volume(event))
         self.slider_volume.bind("<Button-1>", lambda event : self.press_slider_volume(event))
-        self.slider_volume.set(30)
+        # set the default audio level
+        self.slider_volume.set(50)
         self.next_button = next_button
         self.next_button.bind("<Button-1>", lambda event: self.change_song_event(event, next=True))
         self.previous_button = previous_button
@@ -302,8 +304,8 @@ class Player:
     def get_time_song_seconds(self):
         return self.time_song.minute*60 + self.time_song.second
 
-    def change_music_path_from_settings(self, player):
-        self.utility.show_settings_frame(player)
+    def change_music_path_from_settings(self, root, player):
+        self.utility.show_settings_frame(root, player)
 
 
 def read_settings_json_from_file():
@@ -402,7 +404,7 @@ def main():
     root.iconphoto(False, play_icon)
 
     menubar = tk.Menu(root)
-    menubar.add_command(label="Settings", command=lambda : player.change_music_path_from_settings(player))
+    menubar.add_command(label="Settings", command=lambda : player.change_music_path_from_settings(root, player))
 
     root.config(menu=menubar)
 
