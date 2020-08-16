@@ -5,6 +5,7 @@ Music player based on tkinter library and vlc module
 #### You will need:
 - python 3.6.9
 - python3-tk
+- vlc `(sudo apt-get install vlc)`
 
 
 Clone the project in a virtual environment, then:
